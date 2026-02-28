@@ -1,6 +1,6 @@
 venv/
-agenticai/
 .env
 __pycache__/
 *.pyc
 .vscode/
+vectorstore/
