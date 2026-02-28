@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot - AI Medical Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 800px;
+            height: 90vh;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #2c7be5;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .user-message {
+            background-color: #2c7be5;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 18px 18px 0px 18px;
+            max-width: 70%;
+            align-self: flex-end;
+            word-wrap: break-word;
+        }
+
+        .bot-message {
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 12px 18px;
+            border-radius: 18px 18px 18px 0px;
+            max-width: 70%;
+            align-self: flex-start;
+            word-wrap: break-word;
+        }
+
+        .input-area {
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #e0e0e0;
+            background-color: white;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 18px;
+            border: 1px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        button {
+            padding: 12px 24px;
+            background-color: #2c7be5;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #1a5fbf;
+        }
+
+        .history-box {
+            display: none;
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 10px;
+        }
+
+        .history-item p {
+            font-size: 14px;
+            color: #555;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            🏥 MediBot - AI Medical Chatbot
+        </div>
+
+        <!-- Chat Box -->
+        <div class="chat-box" id="chatBox">
+            <div class="bot-message">
+                👋 Hello! I am MediBot. Ask me any medical question!
+            </div>
+        </div>
+
+        <!-- History Box -->
+        <div class="history-box" id="historyBox"></div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Ask a medical question..." />
+            <button onclick="sendMessage()">Send 🚀</button>
+            <button onclick="toggleHistory()">History 📜</button>
+        </div>
+
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const userInput = document.getElementById("userInput");
+            const chatBox = document.getElementById("chatBox");
+            const query = userInput.value.trim();
+            if (!query) return;
+
+            chatBox.innerHTML += `<div class="user-message">${query}</div>`;
+            userInput.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            chatBox.innerHTML += `<div class="bot-message" id="loading">⏳ Thinking...</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const response = await fetch("http://localhost:8000/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query })
+            });
+
+            const data = await response.json();
+            document.getElementById("loading").remove();
+
+            chatBox.innerHTML += `<div class="bot-message">🤖 ${data.result}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function toggleHistory() {
+            const historyBox = document.getElementById("historyBox");
+            if (historyBox.style.display === "block") {
+                historyBox.style.display = "none";
+                return;
+            }
+
+            const response = await fetch("http://localhost:8000/history");
+            const data = await response.json();
+            historyBox.innerHTML = "<h3>📜 Chat History</h3>";
+
+            data.history.forEach(item => {
+                historyBox.innerHTML += `
+                    <div class="history-item">
+                        <p><strong>👤 You:</strong> ${item.user_question}</p>
+                        <p><strong>🤖 MediBot:</strong> ${item.bot_answer}</p>
+                        <p><strong>🕐 Time:</strong> ${item.timestamp}</p>
+                    </div>`;
+            });
+
+            historyBox.style.display = "block";
+        }
+
+        document.getElementById("userInput").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") sendMessage();
+        });
+    </script>
+
+</body>
+</html>

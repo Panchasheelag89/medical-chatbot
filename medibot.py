@@ -9,6 +9,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv, find_dotenv
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 load_dotenv(find_dotenv())
 
@@ -56,6 +58,9 @@ def load_llm(huggingface_repo_id, HF_TOKEN):
     return llm
 
 app = FastAPI()
+@app.get("/") ####
+async def read_root():####
+    return FileResponse("index.html")####
 
 class Request(BaseModel):
     query: str
