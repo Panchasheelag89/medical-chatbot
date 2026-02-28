@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from fastapi import FastAPI
 from pydantic import BaseModel
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -7,11 +8,34 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_huggingface import HuggingFaceEndpoint
 from langchain_groq import ChatGroq
-
 from dotenv import load_dotenv, find_dotenv
+
 load_dotenv(find_dotenv())
 
 DB_FAISS_PATH="vectorstore/db_faiss"
+
+def init_db():
+    conn = sqlite3.connect("medibot.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_question TEXT,
+            bot_answer TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def save_to_db(user_question, bot_answer):
+    conn = sqlite3.connect("medibot.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO chat_history (user_question, bot_answer) VALUES (?, ?)", (user_question, bot_answer))
+    conn.commit()
+    conn.close()
 
 def get_vectorstore():
     embedding_model=HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
@@ -69,10 +93,20 @@ async def chat(request: Request):
         response=qa_chain.invoke({'query':request.query})
         result=response["result"]
         source_documents=response["source_documents"]
+        save_to_db(request.query, result)
         return {"result": result, "source_documents": str(source_documents)}
 
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/history")
+async def get_history():
+    conn = sqlite3.connect("medibot.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_question, bot_answer, timestamp FROM chat_history ORDER BY timestamp ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return {"history": [{"user_question": row[0], "bot_answer": row[1], "timestamp": row[2]} for row in rows]}
 
 if __name__ == "__main__":
     import uvicorn
